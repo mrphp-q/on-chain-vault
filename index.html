@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vault dApp</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6"></script>
+    <style>
+      body {
+        background: #101010;
+        color: #00ffcc;
+        font-family: monospace;
+        text-align: center;
+        padding-top: 40px;
+      }
+      input, button {
+        background: #202020;
+        border: none;
+        color: #00ffcc;
+        padding: 8px 12px;
+        margin: 6px;
+      }
+      button { cursor: pointer; }
+    </style>
+  </head>
+
+  <body>
+    <h2>💰 Vault dApp</h2>
+
+    <button onclick="connectWallet()">🔗 Подключить MetaMask</button>
+    <p id="status">MetaMask не подключен</p>
+
+    <hr>
+
+    <button onclick="getBalance()">📊 Проверить баланс</button>
+    <p id="balance">Баланс: -</p>
+
+    <hr>
+
+    <input id="depositValue" placeholder="Сколько внести (ETH)" />
+    <button onclick="deposit()">💸 Внести</button>
+
+    <input id="withdrawValue" placeholder="Сколько снять (ETH)" />
+    <button onclick="withdraw()">🏦 Снять</button>
+
+    <script>
+      let provider, signer, contract;
+
+      // ====== ABI твоего контракта ======
+      const ABI = [
+        {
+          "inputs": [],
+          "name": "deposit",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [{"internalType":"uint256","name":"amount","type":"uint256"}],
+          "name": "withdraw",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [{"internalType":"address","name":"user","type":"address"}],
+          "name": "getBalance",
+          "outputs": [{"internalType":"uint256","name":"","type":"uint256"}],
+          "stateMutability": "view",
+          "type": "function"
+        }
+      ];
+
+      // ====== адрес твоего контракта ======
+      const CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138";
+
+      async function connectWallet() {
+        try {
+            console.log("🔹 Инициализация подключения...");
+
+            if (!window.ethereum) {
+            alert("Установи MetaMask!");
+            return;
+            }
+
+            const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+            console.log("✅ Аккаунты:", accounts);
+
+            provider = new ethers.BrowserProvider(window.ethereum);
+            console.log("✅ Provider создан");
+
+            signer = await provider.getSigner();
+            console.log("✅ Signer:", await signer.getAddress());
+
+            contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+            console.log("✅ Контракт подключён:", contract);
+
+            document.getElementById("status").innerText = `✅ Подключен: ${accounts[0]}`;
+        } catch (err) {
+            console.error("❌ Ошибка при подключении:", err);
+            alert("Ошибка: " + err.message);
+        }
+        }
+
+
+      async function getBalance() {
+        if (!contract) return alert("Сначала подключи MetaMask!");
+        const addr = await signer.getAddress();
+        const bal = await contract.getBalance(addr);
+        document.getElementById("balance").innerText = `Баланс: ${ethers.formatEther(bal)} ETH`;
+      }
+
+      async function deposit() {
+        if (!contract) return alert("Подключи MetaMask!");
+        const val = document.getElementById("depositValue").value;
+        const tx = await contract.deposit({ value: ethers.parseEther(val) });
+        await tx.wait();
+        alert("💰 Успешно внесено!");
+      }
+
+      async function withdraw() {
+        if (!contract) return alert("Подключи MetaMask!");
+        const val = document.getElementById("withdrawValue").value;
+        const tx = await contract.withdraw(ethers.parseEther(val));
+        await tx.wait();
+        alert("🏦 Снятие выполнено!");
+      }
+
+    </script>
+  </body>
+</html>
